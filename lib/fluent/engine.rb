@@ -76,6 +76,16 @@ module Fluent
     def run_configure(conf)
       configure(conf)
       conf.check_not_fetched { |key, e|
+        parent_name, plugin_name = e.unused_in
+        if parent_name
+          message = if plugin_name
+                      "section <#{e.name}> is not used in <#{parent_name}> of #{plugin_name} plugin"
+                    else
+                      "section <#{e.name}> is not used in <#{parent_name}>"
+                    end
+          $log.warn message
+          next
+        end
         unless e.name == 'system'
           unless @without_source && e.name == 'source'
             $log.warn "parameter '#{key}' in #{e.to_s.strip} is not used."
@@ -90,12 +100,12 @@ module Fluent
         $log.info "gem '#{spec.name}' version '#{spec.version}'"
       end
 
+      @root_agent.configure(conf)
+      @event_router = @root_agent.event_router
+
       unless @suppress_config_dump
         $log.info "using configuration file: #{conf.to_s.rstrip}"
       end
-
-      @root_agent.configure(conf)
-      @event_router = @root_agent.event_router
     end
 
     def load_plugin_dir(dir)

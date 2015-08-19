@@ -21,8 +21,6 @@ module Fluent
   require 'fluent/registry'
 
   module Configurable
-    attr_reader :config
-
     def self.included(mod)
       mod.extend(ClassMethods)
     end
@@ -50,8 +48,11 @@ module Fluent
 
       logger = self.respond_to?(:log) ? log : $log
       proxy = self.class.merged_configure_proxy
+      conf.corresponding_proxies << proxy
 
-      root = Fluent::Config::SectionGenerator.generate(proxy, conf, logger)
+      # In the nested section, can't get plugin class through proxies so get plugin class here
+      plugin_class = Plugin.lookup_name_from_class(proxy.name.to_s)
+      root = Fluent::Config::SectionGenerator.generate(proxy, conf, logger, plugin_class)
       @config_root_section = root
 
       root.instance_eval{ @params.keys }.each do |param_name|
@@ -62,6 +63,10 @@ module Fluent
       end
 
       self
+    end
+
+    def config
+      @masked_config ||= @config.to_masked_element
     end
 
     CONFIG_TYPE_REGISTRY = Registry.new(:config_type, 'fluent/plugin/type_')

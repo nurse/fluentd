@@ -162,12 +162,14 @@ module Fluent
     class RegexpParser < Parser
       include TypeConverter
 
+      config_param :time_key, :string, :default => 'time'
       config_param :time_format, :string, :default => nil
 
       def initialize(regexp, conf={})
         super()
         @regexp = regexp
         unless conf.empty?
+          conf = Config::Element.new('default_regexp_conf', '', conf, []) unless conf.is_a?(Config::Element)
           configure(conf)
         end
 
@@ -201,7 +203,7 @@ module Fluent
         m.names.each {|name|
           if value = m[name]
             case name
-            when "time"
+            when @time_key
               time = @mutex.synchronize { @time_parser.parse(value) }
               if @keep_time_key
                 record[name] = if @type_converters.nil?
